@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>3D Globe</title>
+<style>
+  body { margin: 0; }
+  canvas { display: block; }
+  #popup { position: absolute; background-color: lightgrey; padding: 10px; border: 1px solid black; display: none; }
+  #popup img {
+      max-width: 60%;
+      height: auto;
+  }
+  #popup {
+    font-family: 'Times New Roman', Times, serif
+  }
+</style>
+</head>
+<body>
+<div id="popup"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@latest/build/three.min.js"></script>
+<script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const geometry = new THREE.SphereGeometry(1, 32, 32);
+  const texture = new THREE.TextureLoader().load('8081_earthmap10k.jpg');
+  const material = new THREE.MeshBasicMaterial({ map: texture });
+  const globe = new THREE.Mesh(geometry, material);
+  scene.add(globe);
+
+  camera.position.z = 2;
+
+  const locations = [
+    { lat: 39.9056, lng: -105.0486, content: "<h1>Westminster, Colorado</h1><img src='IMG_7811.JPG' alt='Westminster'><p>Information about Westminster.</p>" },
+    { lat: 49.9877, lng: 8.3847, content: "<h1>Raunheim, Germany</h1><p>Information about Raunheim.</p>" },
+    { lat: -43.5320, lng: 172.6362, content: "<h1>Christchurch, New Zealand</h1><p>Information about Christchurch.</p>" }
+  ];
+
+  function latLongToVector3(lat, lng) {
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+
+    const x = -Math.sin(phi) * Math.cos(theta);
+    const y = Math.cos(phi);
+    const z = Math.sin(phi) * Math.sin(theta);
+
+    return new THREE.Vector3(x, y, z);
+  }
+
+  // Add event listeners for mouse interaction
+  renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+  renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+  renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+  renderer.domElement.addEventListener('click', onClick, false);
+
+  let isDragging = false;
+  let previousMousePosition = {
+      x: 0,
+      y: 0
+  };
+  let isRotating = true; // Flag to control rotation
+
+  function onMouseDown(event) {
+      isDragging = true;
+      previousMousePosition = {
+          x: event.clientX,
+          y: event.clientY
+      };
+      isRotating = false; // Stop rotation when mouse is down
+
+      // Check if the click is on a pin
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(globe.children);
+
+      if (intersects.length > 0) {
+          // A pin was clicked, prevent default to avoid unwanted drag
+          event.preventDefault();
+      }
+  }
+
+  function onMouseMove(event) {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - previousMousePosition.x;
+      const deltaY = event.clientY - previousMousePosition.y;
+
+      globe.rotation.y += deltaX * 0.005;
+      globe.rotation.x += deltaY * 0.005;
+
+      previousMousePosition = {
+          x: event.clientX,
+          y: event.clientY
+      };
+  }
+
+  function onMouseUp() {
+      isDragging = false;
+      // Resume rotation after 5 seconds
+      setTimeout(() => {
+          isRotating = true;
+      }, 5000);
+  }
+
+  function onClick(event) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(globe.children); // Check only the pins (globe's children)
+
+    if (intersects.length > 0) {
+        intersects.forEach(intersect => {
+            // Find the clicked pin in the locations array
+            const clickedPin = locations.find(location => {
+                const locationVector = latLongToVector3(location.lat, location.lng);
+                return intersect.object.position.equals(locationVector);
+            });
+
+            if (clickedPin) {
+                const popup = document.getElementById('popup');
+                popup.innerHTML = clickedPin.content;
+
+                // Position the popup
+                const screenPosition = intersect.object.position.clone().project(camera);
+                const x = (screenPosition.x + 1) * window.innerWidth / 2;
+                const y = -(screenPosition.y - 1) * window.innerHeight / 2;
+
+                popup.style.left = x + 'px';
+                popup.style.top = y + 'px';
+                popup.style.display = 'block';
+            }
+        });
+    } else {
+        // If no pin is clicked, hide the popup
+        const popup = document.getElementById('popup');
+        popup.style.display = 'none';
+    }
+  }
+
+  // Add pins at locations
+  const pinGeometry = new THREE.SphereGeometry(0.03, 32, 32); // Use SphereGeometry, adjust radius as needed
+  const pinMaterial = new THREE.MeshBasicMaterial({ color: 0xfbad26  });
+
+  for (let i = 0; i < locations.length; i++) {
+      const location = locations[i];
+      const locationVector = latLongToVector3(location.lat, location.lng);
+
+      const pin = new THREE.Mesh(pinGeometry, pinMaterial);
+      pin.position.copy(locationVector);
+      pin.name = location.content;
+
+      globe.add(pin);
+  }
+
+  function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotate only if isRotating is true
+      if (isRotating) {
+          globe.rotation.y += 0.005;
+      }
+
+      renderer.render(scene, camera);
+  }
+
+  animate();
+</script>
+</body>
+</html>
