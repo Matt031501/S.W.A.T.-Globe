@@ -1,43 +1,39 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <title>3D Globe with Google Sheet Data</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-    }
-
-canvas {
-  display: block;
-}
+    body { margin: 0; }
+    canvas { display: block; }
     #popup {
       position: absolute;
       background-color: white;
       padding: 10px;
       border: 1px solid black;
       display: none;
-      font-family: 'Open Sans',serif;
+      font-family: 'Open Sans', serif;
       color: #0e416c;
-      /* Optional: Set a maximum width for thse popup */
       max-width: 300px;
       overflow-y: auto;
       word-wrap: break-word;
-      border-radius: 10px; /* Optional: Add rounded corners */
+      border-radius: 10px;
     }
-
-    /* Removed max-width from #popup img */
     #popup img {
+      max-width: 100%;
       height: auto;
     }
   </style>
 </head>
-
 <body>
-  <div id="popup"></div>
+  <div id="popup">
+    <div class="popup-content">
+      <h1 id="location-title"></h1>
+      <div id="location-description"></div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@latest/build/three.min.js"></script>
   <script>
@@ -46,17 +42,15 @@ canvas {
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-
     const geometry = new THREE.SphereGeometry(1, 32, 32);
     const texture = new THREE.TextureLoader().load('8081_earthmap10k.jpg');
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
-
     camera.position.z = 2;
 
-    // Fetch data from Google Sheet
-    fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2rlk41tTDPVINsSDUBax78CqTqMxmJ16_LHeHFw-hcqFwtWKN0EeRFf-8mnAsY0e-4d1wWdyRfSO/pub?gid=0&single=true&output=csv') // Replace with your Google Sheet CSV link
+    // Fetch data from Google Sheet (replace with your actual Google Sheet link)
+    fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2rlk41tTDPVINsSDUBax78CqTqMxmJ16_LHeHFw-hcqFwtWKN0EeRFf-8mnAsY0e-4d1wWdyRfSO/pub?gid=0&single=true&output=csv')
       .then(response => response.text())
       .then(data => {
         const locations = parseCSV(data);
@@ -73,7 +67,6 @@ canvas {
         const location = {};
 
         for (let j = 0; j < headers.length; j++) {
-          // Trim whitespace from header names
           const header = headers[j].trim();
           location[header] = row[j];
         }
@@ -94,19 +87,67 @@ canvas {
     }
 
     function addPinsToGlobe(locations) {
-      // Use SphereGeometry for the pins
-      const pinGeometry = new THREE.SphereGeometry(0.015, 12, 12);
-      const pinMaterial = new THREE.MeshBasicMaterial({ color: 0xfbad26 });
+      // Create materials for each machine type (replace with your actual image URLs)
+      const excavatorMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Screenshot_2025-03-06_145913-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading excavator image:', err);
+        })
+      });
+      const dozerMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Dozer-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading dozer image:', err);
+        })
+      });
+      const compactorMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Compactor-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading compactor image:', err);
+        })
+      });
+      const ctlMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Dozer-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading ctl image:', err);
+        })
+      });
+      const graderMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Grader-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading ts image:', err);
+        })
+      });
+      const tsMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('Icons/Total_Station-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading ts image:', err);
+        })
+      });
 
       locations.forEach(location => {
-        const locationVector = latLongToVector3(parseFloat(location.Latitude), parseFloat(location.Longitude));
-        const pin = new THREE.Mesh(pinGeometry, pinMaterial);
-        pin.position.copy(locationVector);
+        let pinMaterial;
 
-        // Store location data in the userData object
+        const machineType = location.MachineType ? location.MachineType.toLowerCase().trim() : '';
+
+        // Assign pinMaterial based on location.MachineType
+        switch (machineType) {
+            case 'excavator': pinMaterial = excavatorMaterial; break;
+            case 'dozer': pinMaterial = dozerMaterial; break;
+            case 'compactor': pinMaterial = compactorMaterial; break;
+            case 'ctl': pinMaterial = ctlMaterial; break;
+            case 'ts': pinMaterial = tsMaterial; break;
+            case 'grader': pinMaterial = graderMaterial; break;
+            default: 
+                console.warn(`Unknown machine type: ${location.MachineType}. Using default.`);
+                pinMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Default material
+        }
+
+        // Create a sprite for the image
+        const pin = new THREE.Sprite(pinMaterial);
+
+        const locationVector = latLongToVector3(parseFloat(location.Latitude), parseFloat(location.Longitude));
+        pin.position.copy(locationVector);
+        pin.position.setLength(1.045); // Adjust distance from globe surface
+        pin.scale.set(0.075, 0.075, 0.075); // Adjust pin size
+
         pin.userData = {
-          title: location.Location, // Use the "Location" column for the title
-          description: location.Description // Add the description field
+            title: location.Location,
+            description: location.Description
         };
 
         globe.add(pin);
@@ -134,13 +175,10 @@ canvas {
 
     function onMouseMove(event) {
       if (!isDragging) return;
-
       const deltaX = event.clientX - previousMousePosition.x;
       const deltaY = event.clientY - previousMousePosition.y;
-
       globe.rotation.y += deltaX * 0.005;
       globe.rotation.x += deltaY * 0.005;
-
       previousMousePosition = { x: event.clientX, y: event.clientY };
     }
 
@@ -149,35 +187,30 @@ canvas {
       // Resume rotation after 5 seconds
       setTimeout(() => {
         isRotating = true;
-      }, 5000);
+      }, 6000);
     }
 
     function onClick(event) {
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(mouse, camera);
-
       const intersects = raycaster.intersectObjects(globe.children);
-
       if (intersects.length > 0) {
         const intersect = intersects[0];
-
-        if (intersect.object instanceof THREE.Mesh) {
+        if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
           const popup = document.getElementById('popup');
-
-          // Access location data from userData
+          const titleElement = document.getElementById('location-title');
+          const descriptionElement = document.getElementById('location-description');
           const locationData = intersect.object.userData;
-          popup.innerHTML = `<h1>${locationData.title}</h1><p>${locationData.description}</p>`; // Display the description
 
-          // Position the popup
+          titleElement.textContent = locationData.title;
+          descriptionElement.textContent = locationData.description;
+
           const screenPosition = intersect.object.position.clone().project(camera);
           const x = (screenPosition.x + 1) * window.innerWidth / 2;
           const y = -(screenPosition.y - 1) * window.innerHeight / 2;
-
-          // Adjust popup position based on its width
           const popupWidth = popup.offsetWidth;
           popup.style.left = (x - popupWidth / 2) + 'px';
           popup.style.top = y + 'px';
@@ -191,38 +224,37 @@ canvas {
 
     function onMouseWheel(event) {
       event.preventDefault();
-
-      // Get mouse wheel delta (positive for zoom out, negative for zoom in)
       const delta = Math.sign(event.deltaY);
-
-      // Adjust camera position for zoom
       camera.position.z += delta * 0.2;
-
-      // Limit zoom level (adjust values as needed)
       camera.position.z = Math.max(1.5, Math.min(10, camera.position.z));
     }
 
-// Create a particle system for the stars
-const starGeometry = new THREE.BufferGeometry();
-const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
-
-const starVertices =[];
-for (let i = 0; i < 10000; i++) {
-  const x = (Math.random() - 0.5) * 2000;
-  const y = (Math.random() - 0.5) * 2000;
-  const z = (Math.random() - 0.5) * 2000;
-  starVertices.push(x, y, z);
-}
-
-starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-
-const stars = new THREE.Points(starGeometry, starMaterial);
-scene.add(stars);
+    // Create a particle system for the stars
+    const starGeometry = new THREE.BufferGeometry();
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+    const starVertices =[];
+    for (let i = 0; i < 10000; i++) {
+      const x = (Math.random() - 0.5) * 2000;
+      const y = (Math.random() - 0.5) * 2000;
+      const z = (Math.random() - 0.5) * 2000;
+      starVertices.push(x, y, z);
+    }
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
 
     function animate() {
       requestAnimationFrame(animate);
+
+      // Make pins face the camera
+      globe.children.forEach(pin => {
+        if (pin instanceof THREE.Sprite) { // Check if it's a sprite
+          pin.lookAt(camera.position);
+        }
+      });
+
       if (isRotating) {
-        globe.rotation.y += 0.005;
+        globe.rotation.y += 0.003;
       }
       renderer.render(scene, camera);
     }
@@ -230,5 +262,4 @@ scene.add(stars);
     animate();
   </script>
 </body>
-
 </html>
