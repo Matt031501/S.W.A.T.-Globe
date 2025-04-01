@@ -25,9 +25,29 @@
       max-width: 100%;
       height: auto;
     }
+    #reset-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Open Sans', serif;
+    }
+    #reset-button:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
+  <!-- Reset Button -->
+  <button id="reset-button">Reset Globe</button>
+
+  <!-- Popup for location details -->
   <div id="popup">
     <div class="popup-content">
       <h1 id="location-title"></h1>
@@ -110,7 +130,7 @@
       });
       const graderMaterial = new THREE.SpriteMaterial({
         map: new THREE.TextureLoader().load('Grader-removebg-preview.png', undefined, undefined, (err) => {
-            console.error('Error loading ts image:', err);
+            console.error('Error loading grader image:', err);
         })
       });
       const tsMaterial = new THREE.SpriteMaterial({
@@ -118,36 +138,49 @@
             console.error('Error loading ts image:', err);
         })
       });
+      const pdMaterial = new THREE.SpriteMaterial({
+        map: new THREE.TextureLoader().load('PD-removebg-preview.png', undefined, undefined, (err) => {
+            console.error('Error loading pd image:', err);
+        })
+      });
 
       locations.forEach(location => {
         let pinMaterial;
-
         const machineType = location.MachineType ? location.MachineType.toLowerCase().trim() : '';
 
         // Assign pinMaterial based on location.MachineType
         switch (machineType) {
-            case 'excavator': pinMaterial = excavatorMaterial; break;
-            case 'dozer': pinMaterial = dozerMaterial; break;
-            case 'compactor': pinMaterial = compactorMaterial; break;
-            case 'ctl': pinMaterial = ctlMaterial; break;
-            case 'ts': pinMaterial = tsMaterial; break;
-            case 'grader': pinMaterial = graderMaterial; break;
-            default: 
-                console.warn(`Unknown machine type: ${location.MachineType}. Using default.`);
-                pinMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Default material
+          case 'excavator': pinMaterial = excavatorMaterial; break;
+          case 'dozer': pinMaterial = dozerMaterial; break;
+          case 'compactor': pinMaterial = compactorMaterial; break;
+          case 'ctl': pinMaterial = ctlMaterial; break;
+          case 'ts': pinMaterial = tsMaterial; break;
+          case 'grader': pinMaterial = graderMaterial; break;
+          case 'pd': 
+            pinMaterial = pdMaterial;
+            break;
+          default: 
+            console.warn(`Unknown machine type: ${location.MachineType}. Using default.`);
+            pinMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Default material
         }
 
         // Create a sprite for the image
         const pin = new THREE.Sprite(pinMaterial);
 
+        // Adjust the scale for the pd icon
+        if (machineType === 'pd') {
+          pin.scale.set(0.1, 0.1, 0.1); // Larger size for pd icon
+        } else {
+          pin.scale.set(0.075, 0.075, 0.075); // Default size for other icons
+        }
+
         const locationVector = latLongToVector3(parseFloat(location.Latitude), parseFloat(location.Longitude));
         pin.position.copy(locationVector);
         pin.position.setLength(1.045); // Adjust distance from globe surface
-        pin.scale.set(0.075, 0.075, 0.075); // Adjust pin size
 
         pin.userData = {
-            title: location.Location,
-            description: location.Description
+          title: location.Location,
+          description: location.Description
         };
 
         globe.add(pin);
@@ -162,6 +195,33 @@
 
     // Add zoom functionality
     renderer.domElement.addEventListener('wheel', onMouseWheel, false);
+
+    // Add reset button functionality
+    document.getElementById('reset-button').addEventListener('click', resetGlobeOrientation);
+
+    function resetGlobeOrientation() {
+      const targetRotationX = 0; // Upright orientation
+      const targetRotationY = 0; // Centered horizontally
+
+      const animationDuration = 2; // Duration in seconds
+      const animationSteps = 60 * animationDuration; // Assuming 60 FPS
+      const deltaX = (targetRotationX - globe.rotation.x) / animationSteps;
+      const deltaY = (targetRotationY - globe.rotation.y) / animationSteps;
+
+      let step = 0;
+      function animateReset() {
+        if (step < animationSteps) {
+          globe.rotation.x += deltaX;
+          globe.rotation.y += deltaY;
+          step++;
+          requestAnimationFrame(animateReset);
+        } else {
+          globe.rotation.x = targetRotationX;
+          globe.rotation.y = targetRotationY;
+        }
+      }
+      animateReset();
+    }
 
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
@@ -205,16 +265,18 @@
           const descriptionElement = document.getElementById('location-description');
           const locationData = intersect.object.userData;
 
+          // Set the popup content
           titleElement.textContent = locationData.title;
-          descriptionElement.textContent = locationData.description;
+          descriptionElement.innerHTML = locationData.description; // Use innerHTML for formatted text
 
-          const screenPosition = intersect.object.position.clone().project(camera);
-          const x = (screenPosition.x + 1) * window.innerWidth / 2;
-          const y = -(screenPosition.y - 1) * window.innerHeight / 2;
-          const popupWidth = popup.offsetWidth;
-          popup.style.left = (x - popupWidth / 2) + 'px';
-          popup.style.top = y + 'px';
+          // Temporarily make the popup visible to calculate dimensions
           popup.style.display = 'block';
+          const popupWidth = popup.offsetWidth;
+          const popupHeight = popup.offsetHeight;
+
+          // Center the popup in the viewport
+          popup.style.left = `${(window.innerWidth - popupWidth) / 2}px`;
+          popup.style.top = `${(window.innerHeight - popupHeight) / 2}px`;
         }
       } else {
         const popup = document.getElementById('popup');
@@ -254,7 +316,7 @@
       });
 
       if (isRotating) {
-        globe.rotation.y += 0.003;
+        globe.rotation.y += 0.002;
       }
       renderer.render(scene, camera);
     }
