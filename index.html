@@ -351,6 +351,7 @@
           }
 
           hoveredIcon = intersect.object; // Update the currently clicked icon
+          event.stopPropagation(); // stop propagating
         }
       } else {
         const popup = document.getElementById('popup');
