@@ -486,59 +486,21 @@
     }
 
     animate();
+    
+document.addEventListener('mousedown', handleInteractionEvent);
+document.addEventListener('touchstart', handleInteractionEvent);
+document.addEventListener('click', handleInteractionEvent);
 
-    document.addEventListener('click', (event) => {
-      const popup = document.getElementById('popup');
-      const isClickInsidePopup = popup.contains(event.target);
-      const isClickOnCanvas = renderer.domElement.contains(event.target); // Check if the click is on the globe canvas
+function handleInteractionEvent(event) {
+  const popup = document.getElementById('popup');
+  const isInsidePopup = popup.contains(event.target);
+  const isCanvas = renderer.domElement.contains(event.target);
 
-      // Dismiss the popup if the click is outside both the popup and the globe canvas
-      if (!isClickInsidePopup && !isClickOnCanvas) {
-        popup.style.display = 'none';
-      }
-    });
+  if (popup.style.display === 'block' && !isInsidePopup && !isCanvas) {
+    popup.style.display = 'none';
+  }
+}
 
-    document.addEventListener('mousedown', (event) => {
-      const popup = document.getElementById('popup');
-      const isClickInsidePopup = popup.contains(event.target);
-      const isClickOnCanvas = event.target === renderer.domElement; // Check if the click is on the globe canvas
-
-      if (popup.style.display === 'block' && !isClickInsidePopup && !isClickOnCanvas) {
-        popup.style.display = 'none'; // Hide the popup
-      }
-    });
-
-    document.addEventListener('touchstart', (event) => {
-      const popup = document.getElementById('popup');
-      const isTouchInsidePopup = popup.contains(event.target);
-      const isTouchOnCanvas = event.target === renderer.domElement; // Check if the touch is on the globe canvas
-
-      if (popup.style.display === 'block' && !isTouchInsidePopup && !isTouchOnCanvas) {
-        popup.style.display = 'none'; // Hide the popup
-      }
-    });
-
-    document.addEventListener('click', (event) => {
-      const popup = document.getElementById('popup');
-      const isClickInsidePopup = popup.contains(event.target);
-      const isClickOnCanvas = renderer.domElement.contains(event.target); // Check if the click is on the globe canvas
-
-      // Dismiss the popup if the click is outside both the popup and the globe canvas
-      if (!isClickInsidePopup && !isClickOnCanvas) {
-        popup.style.display = 'none';
-      }
-    });
-
-    document.addEventListener('touchstart', (event) => {
-      const popup = document.getElementById('popup');
-      const isTouchInsidePopup = popup.contains(event.target);
-      const isTouchOnCanvas = renderer.domElement.contains(event.target); // Check if the touch is on the globe canvas
-
-      // Dismiss the popup if the touch is outside both the popup and the globe canvas
-      if (!isTouchInsidePopup && !isTouchOnCanvas) {
-        popup.style.display = 'none';
-      }
-    });
   </script>
 </body>
 </html>
