@@ -488,12 +488,11 @@
 
     document.addEventListener('click', (event) => {
       const popup = document.getElementById('popup');
-      if (popup.style.display === 'block') {
-        const isClickInsidePopup = popup.contains(event.target);
-        const isClickOnIcon = event.target instanceof HTMLCanvasElement; // Ensure clicks on icons are ignored
-        if (!isClickInsidePopup && !isClickOnIcon) {
-          popup.style.display = 'none'; // Hide the popup
-        }
+      const isClickInsidePopup = popup.contains(event.target);
+      const isClickOnIcon = event.target.tagName === 'CANVAS'; // Ensure clicks on icons are ignored
+
+      if (popup.style.display === 'block' && !isClickInsidePopup && !isClickOnIcon) {
+        popup.style.display = 'none'; // Hide the popup
       }
     });
   </script>
