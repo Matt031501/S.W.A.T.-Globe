@@ -197,6 +197,11 @@
     // Add zoom functionality
     renderer.domElement.addEventListener('wheel', onMouseWheel, false);
 
+    // Add touch event listeners
+    renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+    renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+    renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+
     // Add reset button functionality
     document.getElementById('reset-button').addEventListener('click', resetGlobeOrientation);
 
@@ -290,6 +295,59 @@
       const delta = Math.sign(event.deltaY);
       camera.position.z += delta * 0.2;
       camera.position.z = Math.max(1.5, Math.min(10, camera.position.z));
+    }
+
+    let isTouching = false;
+    let previousTouchPosition = { x: 0, y: 0 };
+    let initialPinchDistance = null;
+
+    function onTouchStart(event) {
+      if (event.touches.length === 1) {
+        isTouching = true;
+        const touch = event.touches[0];
+        previousTouchPosition = { x: touch.clientX, y: touch.clientY };
+        isRotating = false;
+      } else if (event.touches.length === 2) {
+        initialPinchDistance = getPinchDistance(event.touches);
+      }
+    }
+
+    function onTouchMove(event) {
+      if (event.touches.length === 1 && isTouching) {
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - previousTouchPosition.x;
+        const deltaY = touch.clientY - previousTouchPosition.y;
+
+        globe.rotation.y += deltaX * 0.005;
+        globe.rotation.x += deltaY * 0.005;
+
+        previousTouchPosition = { x: touch.clientX, y: touch.clientY };
+      } else if (event.touches.length === 2) {
+        const currentPinchDistance = getPinchDistance(event.touches);
+        if (initialPinchDistance) {
+          const delta = currentPinchDistance - initialPinchDistance;
+          camera.position.z -= delta * 0.01;
+          camera.position.z = Math.max(1.5, Math.min(10, camera.position.z));
+        }
+        initialPinchDistance = currentPinchDistance;
+      }
+    }
+
+    function onTouchEnd(event) {
+      isTouching = false;
+      initialPinchDistance = null;
+      setTimeout(() => {
+        isRotating = true;
+      }, 5000);
+    }
+
+    function getPinchDistance(touches) {
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      return Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
     }
 
     // Create a particle system for the stars
