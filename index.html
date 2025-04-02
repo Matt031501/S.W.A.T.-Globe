@@ -309,9 +309,11 @@
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(globe.children);
+
       if (intersects.length > 0) {
         const intersect = intersects[0];
         if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
@@ -332,6 +334,22 @@
           // Center the popup in the viewport
           popup.style.left = `${(window.innerWidth - popupWidth) / 2}px`;
           popup.style.top = `${(window.innerHeight - popupHeight) / 2}px`;
+
+          // Scale the clicked icon
+          const baseScale = intersect.object.userData.baseScale;
+          intersect.object.scale.set(
+            baseScale.x * 1.2, // Enlarge by 20%
+            baseScale.y * 1.2,
+            baseScale.z * 1.2
+          );
+
+          // Reset the scale of the previously clicked icon
+          if (hoveredIcon && hoveredIcon !== intersect.object) {
+            const previousBaseScale = hoveredIcon.userData.baseScale;
+            hoveredIcon.scale.set(previousBaseScale.x, previousBaseScale.y, previousBaseScale.z);
+          }
+
+          hoveredIcon = intersect.object; // Update the currently clicked icon
         }
       } else {
         const popup = document.getElementById('popup');
@@ -467,6 +485,17 @@
     }
 
     animate();
+
+    document.addEventListener('click', (event) => {
+      const popup = document.getElementById('popup');
+      if (popup.style.display === 'block') {
+        const isClickInsidePopup = popup.contains(event.target);
+        const isClickOnIcon = event.target instanceof HTMLCanvasElement; // Ensure clicks on icons are ignored
+        if (!isClickInsidePopup && !isClickOnIcon) {
+          popup.style.display = 'none'; // Hide the popup
+        }
+      }
+    });
   </script>
 </body>
 </html>
