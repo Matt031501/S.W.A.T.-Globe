@@ -495,6 +495,16 @@
         popup.style.display = 'none'; // Hide the popup
       }
     });
+
+    document.addEventListener('mousedown', (event) => {
+      const popup = document.getElementById('popup');
+      const isClickInsidePopup = popup.contains(event.target);
+      const isClickOnIcon = event.target.tagName === 'CANVAS'; // Ensure clicks on icons are ignored
+
+      if (popup.style.display === 'block' && !isClickInsidePopup && !isClickOnIcon) {
+        popup.style.display = 'none'; // Hide the popup
+      }
+    });
   </script>
 </body>
 </html>
