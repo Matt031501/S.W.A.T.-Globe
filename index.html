@@ -351,11 +351,12 @@
     let initialPinchDistance = null;
 
     function onTouchStart(event) {
+      isDragging = false; // Reset dragging flag
       if (event.touches.length === 1) {
         isTouching = true;
         const touch = event.touches[0];
         previousTouchPosition = { x: touch.clientX, y: touch.clientY };
-        isRotating = false;
+        isRotating = false; // Stop rotation when touch starts
       } else if (event.touches.length === 2) {
         initialPinchDistance = getPinchDistance(event.touches);
       }
@@ -363,6 +364,7 @@
 
     function onTouchMove(event) {
       if (event.touches.length === 1 && isTouching) {
+        isDragging = true; // Set dragging flag
         const touch = event.touches[0];
         const deltaX = touch.clientX - previousTouchPosition.x;
         const deltaY = touch.clientY - previousTouchPosition.y;
@@ -375,14 +377,49 @@
         const currentPinchDistance = getPinchDistance(event.touches);
         if (initialPinchDistance) {
           const delta = currentPinchDistance - initialPinchDistance;
-          camera.position.z -= delta * 0.01;
-          camera.position.z = Math.max(1.5, Math.min(10, camera.position.z));
+          camera.position.z -= delta * 0.01; // Adjust zoom sensitivity
+          camera.position.z = Math.max(1.5, Math.min(10, camera.position.z)); // Clamp zoom range
         }
         initialPinchDistance = currentPinchDistance;
       }
     }
 
     function onTouchEnd(event) {
+      if (event.touches.length === 0 && !isDragging && !initialPinchDistance) {
+        // Simulate a click on touchend
+        const touch = event.changedTouches[0]; // Get the first touch point
+        const mouse = new THREE.Vector2();
+        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(globe.children);
+
+        if (intersects.length > 0) {
+          const intersect = intersects[0];
+          if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
+            const popup = document.getElementById('popup');
+            const titleElement = document.getElementById('location-title');
+            const descriptionElement = document.getElementById('location-description');
+            const locationData = intersect.object.userData;
+
+            // Set the popup content
+            titleElement.textContent = locationData.title;
+            descriptionElement.innerHTML = locationData.description; // Use innerHTML for formatted text
+
+            // Temporarily make the popup visible to calculate dimensions
+            popup.style.display = 'block';
+            const popupWidth = popup.offsetWidth;
+            const popupHeight = popup.offsetHeight;
+
+            // Center the popup in the viewport
+            popup.style.left = `${(window.innerWidth - popupWidth) / 2}px`;
+            popup.style.top = `${(window.innerHeight - popupHeight) / 2}px`;
+          }
+        }
+      }
+
       isTouching = false;
       initialPinchDistance = null;
       setTimeout(() => {
