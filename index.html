@@ -170,9 +170,9 @@
 
         // Adjust the scale for the pd icon
         if (machineType === 'pd') {
-          pin.scale.set(0.1, 0.1, 0.1); // Larger size for pd icon
+          pin.scale.set(0.12, 0.12, 0.12); // Larger size for pd icon
         } else {
-          pin.scale.set(0.075, 0.075, 0.075); // Default size for other icons
+          pin.scale.set(0.085, 0.085, 0.085); // Default size for other icons
         }
 
         const locationVector = latLongToVector3(parseFloat(location.Latitude), parseFloat(location.Longitude));
@@ -181,7 +181,8 @@
 
         pin.userData = {
           title: location.Location,
-          description: location.Description
+          description: location.Description,
+          baseScale: pin.scale.clone() // Store the base scale
         };
 
         globe.add(pin);
@@ -232,6 +233,7 @@
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
     let isRotating = true; // Flag to control rotation
+    let hoveredIcon = null;
 
     function onMouseDown(event) {
       isDragging = true;
@@ -240,6 +242,42 @@
     }
 
     function onMouseMove(event) {
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(globe.children);
+
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
+          if (hoveredIcon !== intersect.object) {
+            // Reset the scale of the previously hovered icon
+            if (hoveredIcon) {
+              const baseScale = hoveredIcon.userData.baseScale;
+              hoveredIcon.scale.set(baseScale.x, baseScale.y, baseScale.z); // Reset to base size
+            }
+
+            // Set the new hovered icon and enlarge it
+            hoveredIcon = intersect.object;
+            hoveredIcon.scale.set(
+              hoveredIcon.userData.baseScale.x * 1.2, // Enlarge by 20%
+              hoveredIcon.userData.baseScale.y * 1.2,
+              hoveredIcon.userData.baseScale.z * 1.2
+            );
+          }
+        }
+      } else {
+        // Reset the scale if no icon is hovered
+        if (hoveredIcon) {
+          const baseScale = hoveredIcon.userData.baseScale;
+          hoveredIcon.scale.set(baseScale.x, baseScale.y, baseScale.z); // Reset to base size
+          hoveredIcon = null;
+        }
+      }
+
       if (!isDragging) return;
       const deltaX = event.clientX - previousMousePosition.x;
       const deltaY = event.clientY - previousMousePosition.y;
