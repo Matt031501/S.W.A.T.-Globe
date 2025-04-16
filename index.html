@@ -48,6 +48,21 @@
     #reset-button:hover {
       background-color: #004d7a; /* Optional: Darker shade for hover effect */
     }
+    #close-popup {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      color: #0e416c;
+      cursor: pointer;
+    }
+
+    #close-popup:hover {
+      color: #004d7a; /* Darker shade for hover effect */
+    }
   </style>
 </head>
 <body>
@@ -56,9 +71,9 @@
 
   <!-- Popup for location details -->
   <div id="popup">
+    <button id="close-popup" style="position: absolute; top: 5px; right: 5px; background: transparent; border: none; font-size: 18px; font-weight: bold; cursor: pointer;">&times;</button>
     <div class="popup-content">
       <h1 id="location-title"></h1>
-      <div id="location-description"></div>
     </div>
   </div>
 
@@ -187,12 +202,45 @@
 
         pin.userData = {
           title: location.Location,
-          description: location.Description,
+          link: location.Link, // Add the link property
           baseScale: pin.scale.clone() // Store the base scale
         };
 
         globe.add(pin);
       });
+
+      resolveOverlaps(globe.children.filter(child => child instanceof THREE.Sprite));
+    }
+
+    function resolveOverlaps(pins) {
+      const minDistance = 0.1; // Minimum distance between pins
+      const maxIterations = 10; // Limit iterations to prevent infinite loops
+
+      for (let iteration = 0; iteration < maxIterations; iteration++) {
+        let hasOverlap = false;
+
+        for (let i = 0; i < pins.length; i++) {
+          for (let j = i + 1; j < pins.length; j++) {
+            const pinA = pins[i];
+            const pinB = pins[j];
+
+            const distance = pinA.position.distanceTo(pinB.position);
+            if (distance < minDistance) {
+              hasOverlap = true;
+
+              // Calculate a repelling vector
+              const direction = pinA.position.clone().sub(pinB.position).normalize();
+              const overlap = minDistance - distance;
+
+              // Push pins apart
+              pinA.position.add(direction.clone().multiplyScalar(overlap / 2));
+              pinB.position.add(direction.clone().multiplyScalar(-overlap / 2));
+            }
+          }
+        }
+
+        if (!hasOverlap) break; // Stop if no overlaps are detected
+      }
     }
 
     // Add event listeners for mouse interaction
@@ -306,7 +354,6 @@
     }
 
     function onClick(event) {
-      console.log('Clicked element:', event.target);
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -320,12 +367,14 @@
         if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
           const popup = document.getElementById('popup');
           const titleElement = document.getElementById('location-title');
-          const descriptionElement = document.getElementById('location-description');
           const locationData = intersect.object.userData;
 
           // Set the popup content
-          titleElement.textContent = locationData.title;
-          descriptionElement.innerHTML = locationData.description; // Use innerHTML for formatted text
+          titleElement.innerHTML = `
+            <a href="${locationData.link}" target="_blank" style="color: #0063a3; text-decoration: underline;">
+              ${locationData.title}
+            </a>
+          `; // Make the title a clickable link
 
           // Temporarily make the popup visible to calculate dimensions
           popup.style.display = 'block';
@@ -336,22 +385,7 @@
           popup.style.left = `${(window.innerWidth - popupWidth) / 2}px`;
           popup.style.top = `${(window.innerHeight - popupHeight) / 2}px`;
 
-          // Scale the clicked icon
-          const baseScale = intersect.object.userData.baseScale;
-          intersect.object.scale.set(
-            baseScale.x * 1.2, // Enlarge by 20%
-            baseScale.y * 1.2,
-            baseScale.z * 1.2
-          );
-
-          // Reset the scale of the previously clicked icon
-          if (hoveredIcon && hoveredIcon !== intersect.object) {
-            const previousBaseScale = hoveredIcon.userData.baseScale;
-            hoveredIcon.scale.set(previousBaseScale.x, previousBaseScale.y, previousBaseScale.z);
-          }
-
-          hoveredIcon = intersect.object; // Update the currently clicked icon
-          event.stopPropagation(); // stop propagating
+          event.stopPropagation();
         }
       } else {
         const popup = document.getElementById('popup');
@@ -487,7 +521,7 @@
     }
 
     animate();
-    
+
 document.addEventListener('mousedown', handleInteractionEvent);
 document.addEventListener('touchstart', handleInteractionEvent);
 document.addEventListener('click', handleInteractionEvent);
@@ -501,6 +535,11 @@ function handleInteractionEvent(event) {
     popup.style.display = 'none';
   }
 }
+
+document.getElementById('close-popup').addEventListener('click', () => {
+  const popup = document.getElementById('popup');
+  popup.style.display = 'none';
+});
 
   </script>
 </body>
