@@ -455,12 +455,14 @@
           if (intersect.object instanceof THREE.Sprite) { // Check if it's a sprite
             const popup = document.getElementById('popup');
             const titleElement = document.getElementById('location-title');
-            const descriptionElement = document.getElementById('location-description');
             const locationData = intersect.object.userData;
 
             // Set the popup content
-            titleElement.textContent = locationData.title;
-            descriptionElement.innerHTML = locationData.description; // Use innerHTML for formatted text
+            titleElement.innerHTML = `
+              <a href="${locationData.link}" target="_blank" style="color: #0063a3; text-decoration: underline;">
+                ${locationData.title}
+              </a>
+            `; // Make the title a clickable link
 
             // Temporarily make the popup visible to calculate dimensions
             popup.style.display = 'block';
