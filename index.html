@@ -140,37 +140,37 @@
     function addPinsToGlobe(locations) {
       // Create materials for each machine type (replace with your actual image URLs)
       const excavatorMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Excavator-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('ico-industries-construction_white.png', undefined, undefined, (err) => {
             console.error('Error loading excavator image:', err);
         })
       });
       const dozerMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Dozer-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('Bulldozer_white.png', undefined, undefined, (err) => {
             console.error('Error loading dozer image:', err);
         })
       });
       const compactorMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Compactor-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('Roller_white.png', undefined, undefined, (err) => {
             console.error('Error loading compactor image:', err);
         })
       });
       const ctlMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Dozer-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('Bulldozer_white.png', undefined, undefined, (err) => {
             console.error('Error loading ctl image:', err);
         })
       });
       const graderMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Grader-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('White Grader.png', undefined, undefined, (err) => {
             console.error('Error loading grader image:', err);
         })
       });
       const tsMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('Total_Station-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('icon-monitoring_white.png', undefined, undefined, (err) => {
             console.error('Error loading ts image:', err);
         })
       });
       const pdMaterial = new THREE.SpriteMaterial({
-        map: new THREE.TextureLoader().load('PD-removebg-preview.png', undefined, undefined, (err) => {
+        map: new THREE.TextureLoader().load('PD White.png', undefined, undefined, (err) => {
             console.error('Error loading pd image:', err);
         })
       });
@@ -200,7 +200,7 @@
 
         // Adjust the scale for the pd icon
         if (machineType === 'pd') {
-          pin.scale.set(0.12, 0.12, 0.12); // Larger size for pd icon
+          pin.scale.set(0.14, 0.14, 0.14); // Larger size for pd icon
         } else {
           pin.scale.set(0.085, 0.085, 0.085); // Default size for other icons
         }
