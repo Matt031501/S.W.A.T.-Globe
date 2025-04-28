@@ -87,6 +87,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@latest/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -101,30 +102,27 @@
     camera.position.z = 2;
 
     // Fetch data from Google Sheet (replace with your actual Google Sheet link)
-    fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2rlk41tTDPVINsSDUBax78CqTqMxmJ16_LHeHFw-hcqFwtWKN0EeRFf-8mnAsY0e-4d1wWdyRfSO/pub?gid=0&single=true&output=csv')
+    fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2rlk41tTDPVINsSDUBax78CqTqMxmJ16_LHeHFw-hcqFwtWKN0EeRFf-8mnAsY0e-4d1wWdyRfSO/pub?gid=2018109647&single=true&output=csv')
       .then(response => response.text())
       .then(data => {
-        const locations = parseCSV(data);
-        addPinsToGlobe(locations);
+        const parsed = Papa.parse(data, { header: true, skipEmptyLines: true });
+        addPinsToGlobe(parsed.data);
       });
 
     function parseCSV(csvData) {
       const rows = csvData.split('\n');
       const headers = rows[0].split(',');
-      const locations =[];
+      const locations = [];
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i].split(',');
         const location = {};
-
         for (let j = 0; j < headers.length; j++) {
           const header = headers[j].trim();
           location[header] = row[j];
         }
-
         locations.push(location);
       }
-
       return locations;
     }
 
@@ -176,43 +174,56 @@
       });
 
       locations.forEach(location => {
-        let pinMaterial;
-        const machineType = location.MachineType ? location.MachineType.toLowerCase().trim() : '';
+        console.log('All keys:', Object.keys(location));
+        console.log('Latitude raw:', location["Latitude"], 'Longitude raw:', location["Longitude"]);
+        console.log('All keys:', Object.keys(location));
 
-        // Assign pinMaterial based on location.MachineType
-        switch (machineType) {
-          case 'excavator': pinMaterial = excavatorMaterial; break;
-          case 'dozer': pinMaterial = dozerMaterial; break;
-          case 'compactor': pinMaterial = compactorMaterial; break;
-          case 'ctl': pinMaterial = ctlMaterial; break;
-          case 'ts': pinMaterial = tsMaterial; break;
-          case 'grader': pinMaterial = graderMaterial; break;
-          case 'pd': 
-            pinMaterial = pdMaterial;
-            break;
-          default: 
-            console.warn(`Unknown machine type: ${location.MachineType}. Using default.`);
-            pinMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Default material
+        const lat = parseFloat(location["Latitude"] ? location["Latitude"].trim() : '');
+        const lng = parseFloat(location["Longitude"] ? location["Longitude"].trim() : '');
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn('Skipping invalid location:', location);
+          return;
         }
 
-        // Create a sprite for the image
+        const machineType = location["Machine Type"] ? location["Machine Type"].toLowerCase().trim() : '';
+
+        let pinMaterial;
+        switch (machineType) {
+          case 'hex': pinMaterial = excavatorMaterial; break;
+          case 'dozer': pinMaterial = dozerMaterial; break;
+          case 'wheel loader': pinMaterial = dozerMaterial; break;
+          case 'grader': pinMaterial = graderMaterial; break;
+          case 'compact machine': pinMaterial = ctlMaterial; break;
+          case 'soil/landfill compactor': pinMaterial = compactorMaterial; break;
+          case 'drilling/piling': pinMaterial = pdMaterial; break;
+          case 'paver': pinMaterial = pdMaterial; break;
+          case 'asphalt compactor': pinMaterial = compactorMaterial; break;
+          default:
+            console.warn(`Unknown machine type: ${location["Machine Type"]}. Using default.`);
+            pinMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        }
+
         const pin = new THREE.Sprite(pinMaterial);
 
-        // Adjust the scale for the pd icon
-        if (machineType === 'pd') {
-          pin.scale.set(0.14, 0.14, 0.14); // Larger size for pd icon
+        if (
+          machineType === 'paver' ||
+          machineType === 'drilling/piling' ||
+          machineType === 'grader'
+        ) {
+          pin.scale.set(0.145, 0.145, 0.145);
         } else {
-          pin.scale.set(0.085, 0.085, 0.085); // Default size for other icons
+          pin.scale.set(0.085, 0.085, 0.085);
         }
 
-        const locationVector = latLongToVector3(parseFloat(location.Latitude), parseFloat(location.Longitude));
+        const locationVector = latLongToVector3(lat, lng);
         pin.position.copy(locationVector);
-        pin.position.setLength(1.045); // Adjust distance from globe surface
+        pin.position.setLength(1.045);
 
         pin.userData = {
-          title: location.Location,
-          link: location.Link, // Add the link property
-          baseScale: pin.scale.clone() // Store the base scale
+          project: location["Project"],
+          location: location["Location"],
+          link: location["Link"],
+          baseScale: pin.scale.clone()
         };
 
         globe.add(pin);
@@ -377,12 +388,13 @@
           const popup = document.getElementById('popup');
           const titleElement = document.getElementById('location-title');
           const locationData = intersect.object.userData;
-
-          // Set the popup content
           titleElement.innerHTML = `
             <a href="${locationData.link}" target="_blank" style="color: #0063a3; text-decoration: underline;">
-              ${locationData.title}
+              ${locationData.project}
             </a>
+            <div style="font-size: 1em; color: #333; margin-top: 0.5em;">
+              ${locationData.location}
+            </div>
           `; // Make the title a clickable link
 
           // Temporarily make the popup visible to calculate dimensions
@@ -465,12 +477,13 @@
             const popup = document.getElementById('popup');
             const titleElement = document.getElementById('location-title');
             const locationData = intersect.object.userData;
-
-            // Set the popup content
             titleElement.innerHTML = `
               <a href="${locationData.link}" target="_blank" style="color: #0063a3; text-decoration: underline;">
-                ${locationData.title}
+                ${locationData.project}
               </a>
+              <div style="font-size: 1em; color: #333; margin-top: 0.5em;">
+                ${locationData.location}
+              </div>
             `; // Make the title a clickable link
 
             // Temporarily make the popup visible to calculate dimensions
